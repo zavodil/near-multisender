@@ -30,14 +30,6 @@ pub struct Operation {
 
 #[near_bindgen]
 impl Multisender {
-    /*#[init]
-    pub fn new() -> Self {
-        assert!(!env::state_exists(), "The contract is already initialized");
-        Self {
-            deposits = new HashMap<String, u128>
-        }
-    }*/
-
     #[payable]
     pub fn multisend_attached_tokens(&mut self, accounts: Vec<Operation>) {
         let tokens: u128 = near_sdk::env::attached_deposit();
@@ -51,7 +43,7 @@ impl Multisender {
             );
 
             let amount: Balance = account.amount.into();
-            total = total + amount;
+            total += amount;
         }
 
         assert!(
@@ -69,8 +61,6 @@ impl Multisender {
 
             let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
             logs.push_str(&log);
-            //log_string = [log_string, format!("Sending {} yNEAR to account {}", amount_u128, account.account_id).as_bytes()].join("\n");
-            //env::log(format!("Sending {} yNEAR to account {}", amount_u128, account.account_id).as_bytes());
         }
 
         env::log(format!("Done!\n{}", logs).as_bytes());
@@ -82,8 +72,6 @@ impl Multisender {
         assert!(self.deposits.contains_key(&account_id), "Unknown user");
 
         let tokens: Balance = *self.deposits.get(&account_id).unwrap();
-        //match self.deposits.get(&account_id.clone()) {
-        // Some(tokens) => {
         let mut total: Balance = 0;
         for account in &accounts {
             assert!(
@@ -93,7 +81,7 @@ impl Multisender {
             );
 
             let amount: Balance = account.amount.into();
-            total = total + amount;
+            total += amount;
         }
 
         assert!(
@@ -116,26 +104,9 @@ impl Multisender {
 
             let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
             logs.push_str(&log);
-
-            /*let account_id_clone = account_id.clone();
-            match self.deposits.get(&account_id_clone) {
-                Some(balance) => {
-                    self.deposits.insert(account_id_clone, balance - amount_u128);
-                    let log = format!("Sending {} yNEAR to account @{}\n", yton(amount_u128), account.account_id);
-                    logs.push_str(&log);
-                }
-            }*/
-
-            //let balance = self.deposits.get(&account_id.clone()).unwrap();
-            //self.deposits.insert(account_id, balance - amount_u128);
         }
 
         env::log(format!("Done!\n{}", logs).as_bytes());
-        /*}
-        None => {
-            env::log(format!("Deposit not found for user {}", account_id).as_bytes());
-        }
-    }*/
     }
 
     #[payable]
@@ -185,8 +156,6 @@ impl Multisender {
                 0.into()
             }
         }
-
-        //return *self.deposits.get(&account_id).unwrap();
     }
 }
 
