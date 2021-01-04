@@ -21,21 +21,29 @@ export default function App() {
     const [sendButtonDisabled, setSendButtonDisabled] = React.useState(true);
     const [depositButtonDisabled, setDepositButtonDisabled] = React.useState(true);
     const [depositAndSendButtonDisabled, setDepositAndSendButtonDisabled] = React.useState(true);
+    const [depositAndSendButtonVisibility, setDepositAndSendButtonVisibility] = React.useState(true);
 
     // after submitting the form, we want to show Notification
     const [showNotification, setShowNotification] = React.useState("");
 
     const [accounts, setAccounts] = React.useState({});
     const [deposit, setDeposit] = React.useState(0);
+    const [total, setTotal] = React.useState(0);
 
-    let total = 0;
+    const setButtonsVisibility = (accounts, total, deposit, checkOtherButtons) => {
+        if(checkOtherButtons === undefined)
+            checkOtherButtons = false;
 
-    const setButtonsVisibility = (accounts, total, deposit) => {
         const accountsLength = accounts ? Object.keys(accounts).length : 0;
         const signedIn = window.walletConnection.isSignedIn();
-        setDepositAndSendButtonDisabled(!signedIn || !accountsLength || accountsLength > 150);
         setDepositButtonDisabled(!signedIn || !accountsLength || accountsLength < 150 || deposit >= total);
         setSendButtonDisabled(!signedIn || !accountsLength || deposit < total);
+        const allButtonsDisabled = checkOtherButtons && depositButtonDisabled && sendButtonDisabled;
+        setDepositAndSendButtonDisabled(!signedIn || !accountsLength || accountsLength > 150);
+        setDepositAndSendButtonVisibility(allButtonsDisabled || !depositAndSendButtonDisabled);
+        console.log(allButtonsDisabled || !depositAndSendButtonDisabled);
+        console.log(allButtonsDisabled );
+        console.log(!depositAndSendButtonDisabled);
     };
 
     const getAccountsText = (accounts) => {
@@ -47,7 +55,7 @@ export default function App() {
     };
 
     const ParsedAccountsList = () => {
-        total = 0;
+        let total = 0;
         return <ul className="accounts">
             {Object.keys(accounts).map(function (account_id) {
                 total += Number(accounts[account_id]);
@@ -78,7 +86,7 @@ export default function App() {
         const pattern = RegExp(/([0-9a-zA-Z.]*)[,|\||=| ]?([0-9\.]+)/, 'g');
         let accounts = {};
         let result;
-        total = 0;
+        let total = 0;
         while ((result = pattern.exec(input)) !== null) {
             if (result[1] && Number(result[2])) {
                 const amount = Number(result[2])
@@ -90,19 +98,19 @@ export default function App() {
                 total += amount;
             }
         }
+        setTotal(total);
         setAccounts(accounts);
-        setButtonsVisibility(accounts, total, deposit);
+        setButtonsVisibility(accounts, total, deposit, true);
     };
 
 
-    const GetDeposit= () => {
+    const GetDeposit = () => {
         window.contract.get_deposit({
             account_id: window.walletConnection.getAccountId()
         }).then((deposit) => {
             deposit = utils.format.formatNearAmount(deposit, FRAC_DIGITS);
             if (deposit)
                 setDeposit(deposit);
-            setButtonsVisibility(accounts, total, deposit);
         });
     };
 
@@ -110,22 +118,22 @@ export default function App() {
     // Learn more: https://reactjs.org/docs/hooks-intro.html
     React.useEffect(
         () => {
+            // in this case, we only care to query the contract when signed in
+            if (window.walletConnection.isSignedIn())
+                GetDeposit();
+
             const accountsRaw = JSON.parse(window.localStorage.getItem('accounts'));
             let accounts = {};
             if (accountsRaw) {
-                total = 0;
+                let total = 0;
                 Object.keys(accountsRaw).map(function (index) {
                     const amount = utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
                     total += Number(amount);
                     accounts[accountsRaw[index].account_id] = amount;
                 });
                 setAccounts(accounts);
-                setButtonsVisibility(accounts, total, deposit);
-            }
-
-            // in this case, we only care to query the contract when signed in
-            if (window.walletConnection.isSignedIn()) {
-               GetDeposit();
+                setTotal(total);
+                setButtonsVisibility(accounts, total, deposit, false);
             }
         },
 
@@ -273,7 +281,7 @@ export default function App() {
 
                             <button
                                 disabled={depositAndSendButtonDisabled}
-                                className={`deposit-send-button ${depositAndSendButtonDisabled ? "hidden" : ""}`}
+                                className={`deposit-send-button ${depositAndSendButtonVisibility ? "" : "hidden"}`}
                                 onClick={async event => {
                                     event.preventDefault()
 
@@ -289,10 +297,10 @@ export default function App() {
                                         SaveAccountsToLocalStorage([]);
 
                                         const gas = 300000000000000;
-                                        const tokens = ConvertToYoctoNear(total);
+                                        const tokensToAttach = ConvertToYoctoNear(total);
                                         await window.contract.multisend_attached_tokens({
                                             accounts: multisenderAccounts
-                                        }, gas, tokens);
+                                        }, gas, tokensToAttach);
                                     } catch (e) {
                                         alert(
                                             'Something went wrong! \n' +
@@ -318,7 +326,6 @@ export default function App() {
                                 Deposit & Send
                             </button>
 
-
                             <button
                                 disabled={depositButtonDisabled}
                                 className={`deposit-button ${depositButtonDisabled ? "hidden" : ""}`}
@@ -338,9 +345,7 @@ export default function App() {
 
                                         const gas = 10000000000000;
 
-                                        const tokens = ConvertToYoctoNear(total - deposit);
-
-                                        await window.contract.deposit({}, gas, tokens);
+                                        await window.contract.deposit({}, gas, ConvertToYoctoNear(total - deposit));
 
                                     } catch (e) {
                                         alert(
@@ -364,7 +369,7 @@ export default function App() {
                                     }, 11000)
                                 }}
                                 data-tip="Too many tasts for a single transaction. Deposit tokens to the Multisender App and come back to perform multi send">
-                                Deposit
+                                {`Deposit ${(total - deposit).toFixed(2)}Ⓝ`}
                             </button>
                         </div>
 
@@ -376,7 +381,8 @@ export default function App() {
             <div className="footer">
                 <div className="github">
                     <div className="build-on-near">BUILD ON NEAR</div>
-                    NEAR Multisender app. <a href="https://github.com/zavodil/near-multisender" rel="nofollow" target="_blank">Open Source</a>
+                    NEAR Multisender app. <a href="https://github.com/zavodil/near-multisender" rel="nofollow"
+                                             target="_blank">Open Source</a>
                 </div>
                 <div className="promo">
                     Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil community node</a>
