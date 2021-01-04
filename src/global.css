@@ -319,6 +319,9 @@ textarea#accounts {
     color: var(--header-font-color);
     height: 35px;
     cursor: pointer;
+    position: fixed;
+    left: 0;
+    bottom: 0;
 }
 
 .footer div {
