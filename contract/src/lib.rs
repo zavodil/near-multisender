@@ -105,11 +105,12 @@ impl Multisender {
 
         for account in accounts {
             let amount_u128: u128 = account.amount.into();
-            Promise::new(account.account_id.clone()).transfer(amount_u128);
-
             total_sent += amount_u128;
             let new_balance = tokens - total_sent;
+            // TODO reduce only if transfer was successful
             self.deposits.insert(account_id.clone(), new_balance);
+
+            Promise::new(account.account_id.clone()).transfer(amount_u128);
 
             if direct_logs {
                 env::log( format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());

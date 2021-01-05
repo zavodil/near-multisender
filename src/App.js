@@ -41,9 +41,6 @@ export default function App() {
         const allButtonsDisabled = checkOtherButtons && depositButtonDisabled && sendButtonDisabled;
         setDepositAndSendButtonDisabled(!signedIn || !accountsLength || accountsLength > 150);
         setDepositAndSendButtonVisibility(allButtonsDisabled || !depositAndSendButtonDisabled);
-        console.log(allButtonsDisabled || !depositAndSendButtonDisabled);
-        console.log(allButtonsDisabled );
-        console.log(!depositAndSendButtonDisabled);
     };
 
     const getAccountsText = (accounts) => {
