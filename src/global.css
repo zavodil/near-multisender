@@ -261,6 +261,10 @@ aside footer *:last-child {
     vertical-align: bottom;
 }
 
+.footer .build-on-near a{
+    color: white
+}
+
 .account-header .account-deposit, .footer .github {
     padding-left: 5px;
 }
@@ -315,13 +319,17 @@ textarea#accounts {
 
 .footer {
     width: 100%;
-    background-color: var(--gray);
-    color: var(--header-font-color);
+    background-color: var(--light-gray);
+    color: var(--fg);
     height: 35px;
     cursor: pointer;
     position: fixed;
     left: 0;
     bottom: 0;
+}
+
+.footer a{
+    color: var(--fg)
 }
 
 .footer div {

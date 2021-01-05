@@ -174,7 +174,7 @@ export default function App() {
             </div>
             <main>
                 <h1>
-                    NEAR Multisender Tool
+                    Multisender Tool
                 </h1>
                 <form>
                     <fieldset id="fieldset">
@@ -202,9 +202,8 @@ export default function App() {
                   id="accounts"
                   defaultValue={getAccountsText(accounts)}
                   onChange={e => parseAmounts(e.target.value)}
-                  placeholder={"account1.near 3.141592\n" +
-                  "account2.near,2.7182\n" +
-                  "account3.near=1.41421"}
+                  onPaste={e => parseAmounts(e.clipboardData.getData('Text'))}
+                  placeholder={["account1.near 3.141592", "account2.near,2.7182", "account3.near=1.41421"].join('\n')}
                   style={{flex: 1}}
               />
                         </div>
@@ -380,8 +379,8 @@ export default function App() {
             </main>
             <div className="footer">
                 <div className="github">
-                    <div className="build-on-near">BUILD ON NEAR</div>
-                    NEAR Multisender app. <a href="https://github.com/zavodil/near-multisender" rel="nofollow"
+                    <div className="build-on-near"><a href="https://nearspace.info">BUILD ON NEAR</a></div>
+                    NEAR Multisender Tool | <a href="https://github.com/zavodil/near-multisender" rel="nofollow"
                                              target="_blank">Open Source</a>
                 </div>
                 <div className="promo">
