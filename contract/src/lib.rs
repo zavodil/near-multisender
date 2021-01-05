@@ -53,17 +53,25 @@ impl Multisender {
             total
         );
 
+        let direct_logs:bool = accounts.len() < 100;
         let mut logs: String = "".to_string();
 
         for account in accounts {
             let amount_u128: u128 = account.amount.into();
             Promise::new(account.account_id.clone()).transfer(amount_u128);
 
-            let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
-            logs.push_str(&log);
+            if direct_logs {
+                env::log( format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
+            }
+            else{
+                let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
+                logs.push_str(&log);
+            }
         }
 
-        env::log(format!("Done!\n{}", logs).as_bytes());
+        if !direct_logs {
+            env::log(format!("Done!\n{}", logs).as_bytes());
+        }
     }
 
     pub fn multisend_from_balance(&mut self, accounts: Vec<Operation>) {
@@ -93,6 +101,7 @@ impl Multisender {
 
         let mut logs: String = "".to_string();
         let mut total_sent: Balance = 0;
+        let direct_logs:bool = accounts.len() < 100;
 
         for account in accounts {
             let amount_u128: u128 = account.amount.into();
@@ -102,11 +111,18 @@ impl Multisender {
             let new_balance = tokens - total_sent;
             self.deposits.insert(account_id.clone(), new_balance);
 
-            let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
-            logs.push_str(&log);
+            if direct_logs {
+                env::log( format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
+            }
+            else{
+                let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
+                logs.push_str(&log);
+            }
         }
 
-        env::log(format!("Done!\n{}", logs).as_bytes());
+        if !direct_logs {
+            env::log(format!("Done!\n{}", logs).as_bytes());
+        }
     }
 
     #[payable]
