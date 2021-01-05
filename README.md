@@ -1,9 +1,7 @@
-NEAR Multisender
-Demo: https://multisender.nearspace.info/
+NEAR Multisender Tool
 ==================
-
-This [React] app was initialized with [create-near-app]
-
+Demo: https://multisender.nearspace.info/
+Mainnet contract: https://explorer.near.org/accounts/multisender.app.near
 
 Quick Start
 ===========

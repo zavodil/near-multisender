@@ -31,7 +31,7 @@ export default function App() {
     const [total, setTotal] = React.useState(0);
 
     const setButtonsVisibility = (accounts, total, deposit, checkOtherButtons) => {
-        if(checkOtherButtons === undefined)
+        if (checkOtherButtons === undefined)
             checkOtherButtons = false;
 
         const accountsLength = accounts ? Object.keys(accounts).length : 0;
@@ -57,7 +57,7 @@ export default function App() {
             {Object.keys(accounts).map(function (account_id) {
                 total += Number(accounts[account_id]);
                 return <li key={account_id}>
-                    <div className="account">{account_id}</div>
+                    <div className="account" title={account_id}>{AccountTrim(account_id)}</div>
                     <div className="amount">{accounts[account_id]} Ⓝ</div>
                 </li>
             })}
@@ -80,7 +80,7 @@ export default function App() {
     };
 
     let parseAmounts = function (input) {
-        const pattern = RegExp(/([0-9a-zA-Z.]*)[,|\||=| ]?([0-9\.]+)/, 'g');
+        const pattern = RegExp(/([0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
         let accounts = {};
         let result;
         let total = 0;
@@ -121,7 +121,7 @@ export default function App() {
 
             const accountsRaw = JSON.parse(window.localStorage.getItem('accounts'));
             let accounts = {};
-            if (accountsRaw) {
+            if (accountsRaw && accountsRaw.length) {
                 let total = 0;
                 Object.keys(accountsRaw).map(function (index) {
                     const amount = utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
@@ -199,7 +199,11 @@ export default function App() {
                   id="accounts"
                   defaultValue={getAccountsText(accounts)}
                   onChange={e => parseAmounts(e.target.value)}
-                  onPaste={e => parseAmounts(e.clipboardData.getData('Text'))}
+                  onPaste={async (e) => {
+                      fieldset.disabled = true;
+                      await parseAmounts(e.clipboardData.getData('Text'));
+                      fieldset.disabled = false
+                  }}
                   placeholder={["account1.near 3.141592", "account2.near,2.7182", "account3.near=1.41421"].join('\n')}
                   style={{flex: 1}}
               />
@@ -378,7 +382,7 @@ export default function App() {
                 <div className="github">
                     <div className="build-on-near"><a href="https://nearspace.info">BUILD ON NEAR</a></div>
                     NEAR Multisender Tool | <a href="https://github.com/zavodil/near-multisender" rel="nofollow"
-                                             target="_blank">Open Source</a>
+                                               target="_blank">Open Source</a>
                 </div>
                 <div className="promo">
                     Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil community node</a>
@@ -414,4 +418,11 @@ function Notification(props) {
             </footer>
         </aside>
     )
+}
+
+function AccountTrim(account_id) {
+    if (account_id.length > 14 + 14 + 1)
+        return account_id.slice(0, 14) + '…' + account_id.slice(-14);
+    else
+        return account_id;
 }

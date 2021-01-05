@@ -239,7 +239,6 @@ aside footer *:last-child {
     background-color: var(--secondary-bg);
     color: var(--header-font-color);
     height: 35px;
-    cursor: pointer;
 }
 
 .account-header .account-sign-out .link {
@@ -299,6 +298,7 @@ ul.accounts li {
 }
 
 ul.accounts li.total {
+    border-top: 1px solid #000;
     font-weight: bold;
 }
 
@@ -322,7 +322,6 @@ textarea#accounts {
     background-color: var(--light-gray);
     color: var(--fg);
     height: 35px;
-    cursor: pointer;
     position: fixed;
     left: 0;
     bottom: 0;
