@@ -1,5 +1,6 @@
 NEAR Multisender Tool
 ==================
+Multisender sends tokens to hundreds of addresses out in 1 single transaction.
 Demo: https://multisender.nearspace.info/
 Mainnet contract: https://explorer.near.org/accounts/multisender.app.near
 

@@ -53,11 +53,12 @@ export default function App() {
 
     const ParsedAccountsList = () => {
         let total = 0;
+        let counter = 1;
         return <ul className="accounts">
             {Object.keys(accounts).map(function (account_id) {
                 total += Number(accounts[account_id]);
                 return <li key={account_id}>
-                    <div className="account" title={account_id}>{AccountTrim(account_id)}</div>
+                    <div className="account" title={account_id}>{counter++}. {AccountTrim(account_id)}</div>
                     <div className="amount">{accounts[account_id]} Ⓝ</div>
                 </li>
             })}
@@ -73,14 +74,14 @@ export default function App() {
         if (props && props.total)
             return <li key="total" className="total">
                 <div className="account">Total</div>
-                <div className="amount">{props.total.toFixed(2)} Ⓝ</div>
+                <div className="amount">{props.total.toFixed(props.total >= 1 ? 2 : 5)} Ⓝ</div>
             </li>;
         else
             return null
     };
 
     let parseAmounts = function (input) {
-        const pattern = RegExp(/([0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
+        const pattern = RegExp(/([\_0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
         let accounts = {};
         let result;
         let total = 0;
@@ -144,7 +145,10 @@ export default function App() {
     if (!window.walletConnection.isSignedIn()) {
         return (
             <main>
-                <h1>NEAR Multisender</h1>
+                <h1>Multisender Tool</h1>
+                <p>
+                    Multisender sends tokens to hundreds of NEAR addresses out in 1 single transaction.
+                </p>
                 <p>
                     To make use of the NEAR blockchain, you need to sign in. The button
                     below will sign you in using NEAR Wallet.
