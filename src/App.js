@@ -22,6 +22,7 @@ export default function App() {
     const [depositButtonDisabled, setDepositButtonDisabled] = React.useState(true);
     const [depositAndSendButtonDisabled, setDepositAndSendButtonDisabled] = React.useState(true);
     const [depositAndSendButtonVisibility, setDepositAndSendButtonVisibility] = React.useState(true);
+    const [textareaPlaceHolderVisibility, setTextareaPlaceHolderVisibility] = React.useState(true);
 
     // after submitting the form, we want to show Notification
     const [showNotification, setShowNotification] = React.useState("");
@@ -34,12 +35,12 @@ export default function App() {
         if (checkOtherButtons === undefined)
             checkOtherButtons = false;
 
-        const accountsLength = accounts ? Object.keys(accounts).length : 0;
         const signedIn = window.walletConnection.isSignedIn();
-        setDepositButtonDisabled(!signedIn || !accountsLength || accountsLength < 150 || deposit >= total);
+        const accountsLength = accounts ? Object.keys(accounts).length : 0;
+        setDepositButtonDisabled(!signedIn || !accountsLength || /*accountsLength < 150 || */deposit >= total || !total);
         setSendButtonDisabled(!signedIn || !accountsLength || deposit < total);
         const allButtonsDisabled = checkOtherButtons && depositButtonDisabled && sendButtonDisabled;
-        setDepositAndSendButtonDisabled(!signedIn || !accountsLength || accountsLength > 150);
+        setDepositAndSendButtonDisabled(!signedIn || !accountsLength /*|| accountsLength > 150*/);
         setDepositAndSendButtonVisibility(allButtonsDisabled || !depositAndSendButtonDisabled);
     };
 
@@ -81,7 +82,7 @@ export default function App() {
     };
 
     let parseAmounts = function (input) {
-        const pattern = RegExp(/([\_0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
+        const pattern = RegExp(/([\_\-0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
         let accounts = {};
         let result;
         let total = 0;
@@ -96,43 +97,44 @@ export default function App() {
                 total += amount;
             }
         }
+        setTextareaPlaceHolderVisibility(!input.length);
         setTotal(total);
         setAccounts(accounts);
         setButtonsVisibility(accounts, total, deposit, true);
     };
 
 
-    const GetDeposit = () => {
-        window.contract.get_deposit({
+    const GetDeposit = async () => {
+        const deposit = await window.contract.get_deposit({
             account_id: window.walletConnection.getAccountId()
-        }).then((deposit) => {
-            deposit = utils.format.formatNearAmount(deposit, FRAC_DIGITS);
-            if (deposit)
-                setDeposit(deposit);
         });
+        const depositFormatted = utils.format.formatNearAmount(deposit, FRAC_DIGITS);
+        setDeposit(depositFormatted);
+        return depositFormatted;
     };
 
     // The useEffect hook can be used to fire side-effects during render
     // Learn more: https://reactjs.org/docs/hooks-intro.html
     React.useEffect(
-        () => {
+        async () => {
             // in this case, we only care to query the contract when signed in
             if (window.walletConnection.isSignedIn())
-                GetDeposit();
-
-            const accountsRaw = JSON.parse(window.localStorage.getItem('accounts'));
-            let accounts = {};
-            if (accountsRaw && accountsRaw.length) {
-                let total = 0;
-                Object.keys(accountsRaw).map(function (index) {
-                    const amount = utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
-                    total += Number(amount);
-                    accounts[accountsRaw[index].account_id] = amount;
+                await GetDeposit().then((deposit) => {
+                    const accountsRaw = JSON.parse(window.localStorage.getItem('accounts'));
+                    let accounts = {};
+                    if (accountsRaw && accountsRaw.length) {
+                        let total = 0;
+                        Object.keys(accountsRaw).map(function (index) {
+                            const amount = utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
+                            total += Number(amount);
+                            accounts[accountsRaw[index].account_id] = amount;
+                        });
+                        setTextareaPlaceHolderVisibility(false);
+                        setAccounts(accounts);
+                        setTotal(total);
+                        setButtonsVisibility(accounts, total, deposit, true);
+                    }
                 });
-                setAccounts(accounts);
-                setTotal(total);
-                setButtonsVisibility(accounts, total, deposit, false);
-            }
         },
 
         // The second argument to useEffect tells React when to re-run the effect
@@ -197,20 +199,22 @@ export default function App() {
                         >
                             Enter one address and amount in NEAR on each line. Supports any format.
                         </label>
-                        <div style={{display: 'flex'}}>
-              <textarea
-                  autoComplete="off"
-                  id="accounts"
-                  defaultValue={getAccountsText(accounts)}
-                  onChange={e => parseAmounts(e.target.value)}
-                  onPaste={async (e) => {
-                      fieldset.disabled = true;
-                      await parseAmounts(e.clipboardData.getData('Text'));
-                      fieldset.disabled = false
-                  }}
-                  placeholder={["account1.near 3.141592", "account2.near,2.7182", "account3.near=1.41421"].join('\n')}
-                  style={{flex: 1}}
-              />
+                        <div className="accounts-textarea">
+                                  <textarea
+                                      autoFocus
+                                      autoComplete="off"
+                                      id="accounts"
+                                      defaultValue={getAccountsText(accounts)}
+                                      onChange={e => parseAmounts(e.target.value)}
+                                  />
+                            {
+                                textareaPlaceHolderVisibility &&
+                                <div className="accounts-placeholder">
+                                    account1.near 3.141592<br/>
+                                    account2.near,2.7182<br/>
+                                    account3.near=1.41421
+                                </div>
+                            }
                         </div>
 
                         <div className="action-buttons">
