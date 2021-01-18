@@ -139,7 +139,7 @@ button.link {
 
 fieldset {
     border: none;
-    padding: 1em 0;
+    padding: 0.1em 0 0 0;
 }
 
 input {
@@ -315,6 +315,28 @@ ul.accounts div.amount {
     position: relative;
     display: block;
     width: 100%;
+}
+
+.textarea-description{
+    display:flex
+}
+
+.textarea-description .upload-csv{
+    align-self: flex-end;
+    padding-bottom: 0.3em;
+}
+
+.textarea-description .caption{
+    flex: 1;
+}
+
+.upload-csv-button{
+    background-color: var(--gray);
+    font-size: 0.5em;
+}
+
+.react-file-reader-input{
+    display: contents;
 }
 
 .accounts-textarea textarea#accounts, .accounts-placeholder {
