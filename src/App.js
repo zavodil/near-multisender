@@ -5,6 +5,7 @@ import './global.css'
 import {utils} from 'near-api-js'
 import {BN} from 'bn.js'
 import ReactTooltip from 'react-tooltip';
+import ReactFileReader from 'react-file-reader';
 
 import getConfig from './config'
 
@@ -50,6 +51,15 @@ export default function App() {
                 return acc + cur + " " + accounts[cur] + "\r";
             }, "")
             : "";
+    };
+
+    const UploadCSV = files => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const csv = reader.result.replace(/[, ]+/g, " ").trim(); // remove extra commas
+            parseAmounts(csv)
+        };
+        reader.readAsText(files[0]);
     };
 
     const ParsedAccountsList = () => {
@@ -179,8 +189,9 @@ export default function App() {
                 <h1>
                     Multisender Tool
                 </h1>
-                <form>
-                    <fieldset id="fieldset">
+
+                <div className="textarea-description">
+                    <div className="caption">
                         <label
                             style={{
                                 display: 'block',
@@ -199,6 +210,16 @@ export default function App() {
                         >
                             Enter one address and amount in NEAR on each line. Supports any format.
                         </label>
+                    </div>
+                    <div className="upload-csv">
+                        <ReactFileReader handleFiles={UploadCSV} fileTypes={'.csv'}>
+                            <button className='btn upload-csv-button'>Upload CSV</button>
+                        </ReactFileReader>
+                    </div>
+                </div>
+
+                <form>
+                    <fieldset id="fieldset">
                         <div className="accounts-textarea">
                                   <textarea
                                       autoFocus
@@ -376,7 +397,7 @@ export default function App() {
                                         setShowNotification("")
                                     }, 11000)
                                 }}
-                                data-tip="Too many tasts for a single transaction. Deposit tokens to the Multisender App and come back to perform multi send">
+                                data-tip="Deposit tokens to the Multisender App and come back to perform multi send. Option for Ledger holders and for those who have too many tasks for a single transaction. ">
                                 {`Deposit ${(total - deposit).toFixed(2)}Ⓝ`}
                             </button>
                         </div>
