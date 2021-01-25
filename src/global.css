@@ -255,8 +255,7 @@ aside footer *:last-child {
     padding: 0.2em 0.3em 0.1em 0.3em;
     margin: 0 0.3em 0 0.75em;
     background-color: #043598;
-    height: 100%;
-    vertical-align: bottom;
+    height: 34px;
 }
 
 .footer .build-on-near a {
@@ -267,6 +266,12 @@ aside footer *:last-child {
     padding-left: 5px;
 }
 
+.footer .github {
+    display: flex;
+    max-width: 50%;
+    width: 50%;
+}
+
 .account-header .account-sign-out, .footer .promo {
     padding-right: 5px;
     float: right;
@@ -274,8 +279,17 @@ aside footer *:last-child {
     height: 100%;
 }
 
-.footer .promo {
+.footer .promo, .footer .github {
     margin-top: 5px;
+}
+
+.footer .promo {
+    text-align: right;
+    flex: 1;
+}
+
+.footer .github .brand{
+    padding-top: 3px;
 }
 
 .send-button, .deposit-button, .deposit-send-button {
@@ -284,7 +298,8 @@ aside footer *:last-child {
 }
 
 .action-buttons {
-    padding-top: 1em;
+    padding-top: 0.2em;
+    font-size: 0.8em
 }
 
 ul.accounts {
@@ -317,25 +332,25 @@ ul.accounts div.amount {
     width: 100%;
 }
 
-.textarea-description{
-    display:flex
+.textarea-description {
+    display: flex
 }
 
-.textarea-description .upload-csv{
+.textarea-description .upload-csv {
     align-self: flex-end;
     padding-bottom: 0.3em;
 }
 
-.textarea-description .caption{
+.textarea-description .caption {
     flex: 1;
 }
 
-.upload-csv-button{
+.upload-csv-button {
     background-color: var(--gray);
     font-size: 0.5em;
 }
 
-.react-file-reader-input{
+.react-file-reader-input {
     display: contents;
 }
 
@@ -370,6 +385,7 @@ textarea#accounts {
     position: fixed;
     left: 0;
     bottom: 0;
+    display: flex;
 }
 
 .footer a {

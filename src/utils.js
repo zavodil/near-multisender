@@ -31,9 +31,9 @@ export function logout() {
 }
 
 export function login() {
-  // Allow the current app to make calls to the specified contract on the
+    // Allow the current app to make calls to the specified contract on the
   // user's behalf.
   // This works by creating a new access key for the user's account and storing
   // the private key in localStorage.
-  window.walletConnection.requestSignIn(nearConfig.contractName, "NEAR Multisender", "https://multisender.nearspace.info/?success", "https://multisender.nearspace.info/?failure")
+  window.walletConnection.requestSignIn(nearConfig.contractName, "NEAR Multisender")
 }

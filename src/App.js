@@ -2,14 +2,14 @@ import 'regenerator-runtime/runtime'
 import React from 'react'
 import {login, logout} from './utils'
 import './global.css'
-import {utils} from 'near-api-js'
+import * as nearAPI from 'near-api-js'
 import {BN} from 'bn.js'
 import ReactTooltip from 'react-tooltip';
 import ReactFileReader from 'react-file-reader';
 
 import getConfig from './config'
 
-const {networkId} = getConfig(process.env.NODE_ENV || 'development');
+const config = getConfig(process.env.NODE_ENV || 'development');
 
 const FRAC_DIGITS = 5;
 
@@ -20,6 +20,7 @@ function ConvertToYoctoNear(amount) {
 export default function App() {
     // when the user has not yet interacted with the form, disable the button
     const [sendButtonDisabled, setSendButtonDisabled] = React.useState(true);
+    const [checkButtonVisibility, setCheckButtonVisibility] = React.useState(false);
     const [depositButtonDisabled, setDepositButtonDisabled] = React.useState(true);
     const [depositAndSendButtonDisabled, setDepositAndSendButtonDisabled] = React.useState(true);
     const [depositAndSendButtonVisibility, setDepositAndSendButtonVisibility] = React.useState(true);
@@ -40,6 +41,7 @@ export default function App() {
         const accountsLength = accounts ? Object.keys(accounts).length : 0;
         setDepositButtonDisabled(!signedIn || !accountsLength || /*accountsLength < 150 || */deposit >= total || !total);
         setSendButtonDisabled(!signedIn || !accountsLength || deposit < total);
+        setCheckButtonVisibility(!signedIn || !accountsLength);
         const allButtonsDisabled = checkOtherButtons && depositButtonDisabled && sendButtonDisabled;
         setDepositAndSendButtonDisabled(!signedIn || !accountsLength /*|| accountsLength > 150*/);
         setDepositAndSendButtonVisibility(allButtonsDisabled || !depositAndSendButtonDisabled);
@@ -116,9 +118,9 @@ export default function App() {
 
     const GetDeposit = async () => {
         const deposit = await window.contract.get_deposit({
-            account_id: window.walletConnection.getAccountId()
+            account_id: window.accountId
         });
-        const depositFormatted = utils.format.formatNearAmount(deposit, FRAC_DIGITS);
+        const depositFormatted = nearAPI.utils.format.formatNearAmount(deposit, FRAC_DIGITS);
         setDeposit(depositFormatted);
         return depositFormatted;
     };
@@ -128,14 +130,15 @@ export default function App() {
     React.useEffect(
         async () => {
             // in this case, we only care to query the contract when signed in
-            if (window.walletConnection.isSignedIn())
+            if (window.walletConnection.isSignedIn()) {
                 await GetDeposit().then((deposit) => {
                     const accountsRaw = JSON.parse(window.localStorage.getItem('accounts'));
+
                     let accounts = {};
                     if (accountsRaw && accountsRaw.length) {
                         let total = 0;
                         Object.keys(accountsRaw).map(function (index) {
-                            const amount = utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
+                            const amount = nearAPI.utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
                             total += Number(amount);
                             accounts[accountsRaw[index].account_id] = amount;
                         });
@@ -145,6 +148,7 @@ export default function App() {
                         setButtonsVisibility(accounts, total, deposit, true);
                     }
                 });
+            }
         },
 
         // The second argument to useEffect tells React when to re-run the effect
@@ -239,6 +243,70 @@ export default function App() {
                         </div>
 
                         <div className="action-buttons">
+
+                            <button
+                                disabled={checkButtonVisibility}
+                                className={`send-button ${checkButtonVisibility ? "hidden" : ""}`}
+                                onClick={async event => {
+                                    event.preventDefault();
+
+                                    // disable the form while the value gets updated on-chain
+                                    fieldset.disabled = true
+
+                                    const connection = getNearAccountConnection();
+
+                                    const mapLoop = async () => {
+                                        return Promise.all(Object.keys(accounts).map(async account => {
+                                                let valid = await accountExists(connection, account);
+                                                if (valid) {
+                                                    return account;
+                                                } else {
+                                                    console.log("Invalid account: " + account);
+                                                }
+                                            }
+                                        ));
+                                    };
+
+                                    mapLoop().then((validAccounts) => {
+                                        let validAccountsFiltered = [];
+                                        let total = 0;
+                                        Object.values(validAccounts).map(account => {
+                                            if (account) {
+                                                validAccountsFiltered[account] = accounts[account];
+                                                total += accounts[account];
+                                            }
+                                        });
+                                        const removed = Object.keys(accounts).length - Object.keys(validAccountsFiltered).length;
+                                        setAccounts(validAccountsFiltered);
+                                        setTotal(total);
+                                        setButtonsVisibility(validAccountsFiltered, total, deposit, true);
+
+                                        fieldset.disabled = false
+                                        // show Notification
+                                        if (removed > 0)
+                                            setShowNotification({
+                                                method: "text",
+                                                data: `Removed ${removed} invalid account(s)`
+                                            });
+                                        else
+                                            setShowNotification({
+                                                method: "text",
+                                                data: `All accounts are valid`
+                                            });
+
+                                        // remove Notification again after css animation completes
+                                        // this allows it to be shown again next time the form is submitted
+                                        setTimeout(() => {
+                                            setShowNotification("")
+                                        }, 11000)
+                                    });
+
+
+                                }}
+                                data-tip={"Remove invalid accounts from the list"}>
+                                Check
+                            </button>
+
                             <button
                                 disabled={sendButtonDisabled}
                                 className={`send-button ${sendButtonDisabled ? "hidden" : ""}`}
@@ -278,7 +346,7 @@ export default function App() {
                                                     accounts: currentMultisenderAccounts
                                                 }, gas).then(() => GetDeposit());
 
-                                                setShowNotification("multisend_from_balance");
+                                                setShowNotification({method: "call", data: "multisend_from_balance"});
                                             });
                                             console.log('End')
                                         };
@@ -296,7 +364,7 @@ export default function App() {
                                     }
 
                                     // show Notification
-                                    setShowNotification("multisend_from_balance");
+                                    setShowNotification({method: "call", data: "multisend_from_balance"});
 
                                     // remove Notification again after css animation completes
                                     // this allows it to be shown again next time the form is submitted
@@ -343,7 +411,7 @@ export default function App() {
                                     }
 
                                     // show Notification
-                                    setShowNotification("multisend_attached_tokens");
+                                    setShowNotification({method: "call", data: "multisend_attached_tokens"});
 
                                     // remove Notification again after css animation completes
                                     // this allows it to be shown again next time the form is submitted
@@ -365,6 +433,7 @@ export default function App() {
                                     fieldset.disabled = true;
 
                                     try {
+
                                         let multisenderAccounts = Object.keys(accounts).reduce(function (acc, cur) {
                                             acc.push({account_id: cur, amount: ConvertToYoctoNear(accounts[cur])})
                                             return acc;
@@ -389,7 +458,7 @@ export default function App() {
                                     }
 
                                     // show Notification
-                                    setShowNotification("deposit")
+                                    setShowNotification({method: "call", data: "deposit"})
 
                                     // remove Notification again after css animation completes
                                     // this allows it to be shown again next time the form is submitted
@@ -410,17 +479,36 @@ export default function App() {
             <div className="footer">
                 <div className="github">
                     <div className="build-on-near"><a href="https://nearspace.info">BUILD ON NEAR</a></div>
-                    NEAR Multisender Tool | <a href="https://github.com/zavodil/near-multisender" rel="nofollow"
-                                               target="_blank">Open Source</a>
+                    <div className="brand">NEAR Multisender Tool | <a href="https://github.com/zavodil/near-multisender"
+                                                                      rel="nofollow"
+                                                                      target="_blank">Open Source</a></div>
                 </div>
                 <div className="promo">
-                    Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil community node</a>
+                    Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil node</a>
                 </div>
             </div>
-            {showNotification && <Notification method={showNotification}/>}
+            {showNotification && Object.keys(showNotification) &&
+            <Notification method={showNotification.method} data={showNotification.data}/>}
             <ReactTooltip/>
         </>
     )
+}
+
+function getNearAccountConnection() {
+    if (!window.connection) {
+        const provider = new nearAPI.providers.JsonRpcProvider(config.nodeUrl);
+        window.connection = new nearAPI.Connection(config.nodeUrl, provider, {});
+    }
+    return window.connection;
+}
+
+async function accountExists(connection, accountId) {
+    try {
+        await new nearAPI.Account(connection, accountId).state();
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 function SaveAccountsToLocalStorage(accounts) {
@@ -429,24 +517,38 @@ function SaveAccountsToLocalStorage(accounts) {
 
 // this component gets rendered by App after the form is submitted
 function Notification(props) {
-    const urlPrefix = `https://explorer.${networkId}.near.org/accounts`
-    return (
-        <aside>
-            <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.accountId}`}>
-                {window.accountId}
-            </a>
-            {' '/* React trims whitespace around tags; insert literal space character when needed */}
-            called method: '{props.method}' in contract:
-            {' '}
-            <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.contract.contractId}`}>
-                {window.contract.contractId}
-            </a>
-            <footer>
-                <div>✔ Succeeded</div>
-                <div>Just now</div>
-            </footer>
-        </aside>
-    )
+    const urlPrefix = `https://explorer.${config.networkId}.near.org/accounts`
+    if (props.method === "call")
+        return (
+            <aside>
+                <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.accountId}`}>
+                    {window.accountId}
+                </a>
+                {' '/* React trims whitespace around tags; insert literal space character when needed */}
+                called method: '{props.data}' in contract:
+                {' '}
+                <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.contract.contractId}`}>
+                    {window.contract.contractId}
+                </a>
+                <footer>
+                    <div>✔ Succeeded</div>
+                    <div>Just now</div>
+                </footer>
+            </aside>
+        )
+    else if (props.method === "text")
+        return (
+            <aside>
+                {props.data}
+                <footer>
+                    <div>✔ Succeeded</div>
+                    <div>Just now</div>
+                </footer>
+            </aside>
+        )
+    else return (
+            <aside/>
+        )
 }
 
 function AccountTrim(account_id) {
