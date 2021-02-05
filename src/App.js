@@ -86,6 +86,39 @@ export default function App() {
         </ul>;
     };
 
+    const Header = () => {
+        return <div className="nav-container">
+            <div className="nav-header">
+                <NearLogo/>
+                <div className="nav-item user-name">{window.accountId}</div>
+                <Deposit/>
+                <div className="nav align-right">
+                    <NavMenu/>
+                    <div className="account-sign-out">
+                        <button className="link" style={{float: 'right'}} onClick={logout}>
+                            Sign out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
+    const Footer = () => {
+        return <div className="footer">
+            <div className="github">
+                <div className="build-on-near"><a href="https://nearspace.info">BUILD ON NEAR</a></div>
+                <div className="brand">NEAR {appSettings.appNme} | <a href={appSettings.github}
+                                                                      rel="nofollow"
+                                                                      target="_blank">Open Source</a></div>
+            </div>
+            <div className="promo">
+                Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil node</a>
+            </div>
+        </div>
+    };
+
+
     const Deposit = () => {
         return deposit && Number(deposit) ?
             <div className="nav user-balance" data-tip="Your internal balance in Multisender App">
@@ -227,42 +260,30 @@ export default function App() {
     // if not signed in, return early with sign-in prompt
     if (!window.walletConnection.isSignedIn()) {
         return (
-            <main>
-                <h1>Multisender Tool</h1>
-                <p>
-                    Multisender sends tokens to hundreds of NEAR addresses out in 1 single transaction.
-                </p>
-                <p>
-                    To make use of the NEAR blockchain, you need to sign in. The button
-                    below will sign you in using NEAR Wallet.
-                </p>
-                <p style={{textAlign: 'center', marginTop: '2.5em'}}>
-                    <button onClick={login}>Sign in</button>
-                </p>
-            </main>
+            <>
+                <Header/>
+                <main>
+                    <h1>{appSettings.appNme}</h1>
+                    <p>
+                        {appSettings.appDescription}
+                    </p>
+                    <p>
+                        To make use of the NEAR blockchain, you need to sign in. The button
+                        below will sign you in using NEAR Wallet.
+                    </p>
+                    <p style={{textAlign: 'center', marginTop: '2.5em'}}>
+                        <button onClick={login}>Sign in</button>
+                    </p>
+                </main>
+                <Footer/>
+            </>
         )
     }
 
     return (
         // use React Fragment, <>, to avoid wrapping elements in unnecessary divs
         <>
-
-
-            <div className="nav-container">
-                <div className="nav-header">
-                    <NearLogo/>
-                    <div className="nav-item user-name">{window.accountId}</div>
-                    <Deposit/>
-                    <div className="nav align-right">
-                        <NavMenu/>
-                        <div className="account-sign-out">
-                            <button className="link" style={{float: 'right'}} onClick={logout}>
-                                Sign out
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <Header/>
             <main>
                 <div className="background-img"></div>
                 <h1>
@@ -551,17 +572,9 @@ export default function App() {
                     </fieldset>
                 </form>
             </main>
-            <div className="footer">
-                <div className="github">
-                    <div className="build-on-near"><a href="https://nearspace.info">BUILD ON NEAR</a></div>
-                    <div className="brand">NEAR Multisender Tool | <a href="https://github.com/zavodil/near-multisender"
-                                                                      rel="nofollow"
-                                                                      target="_blank">Open Source</a></div>
-                </div>
-                <div className="promo">
-                    Made by <a href="https://near.zavodil.ru/" rel="nofollow" target="_blank">Zavodil node</a>
-                </div>
-            </div>
+
+            <Footer/>
+
             {showNotification && Object.keys(showNotification) &&
             <Notification method={showNotification.method} data={showNotification.data}/>}
             <ReactTooltip/>
