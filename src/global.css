@@ -243,15 +243,23 @@ aside footer *:last-child {
     }
 }
 
+.verify-button {
+    display: block;
+    margin-bottom: 0.5em;
+}
 
 .send-button, .deposit-button, .deposit-send-button {
     border-radius: 5px;
-    margin-right: 1em;
+    margin-right: 0.5em;
 }
 
 .action-buttons {
     padding-top: 0.2em;
     font-size: 0.8em
+}
+
+.action-buttons-last{
+    margin-bottom: 1em;
 }
 
 .hidden {

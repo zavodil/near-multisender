@@ -1,5 +1,5 @@
 import 'regenerator-runtime/runtime'
-import React from 'react'
+import React, {useRef} from 'react'
 import {login, logout} from './utils'
 import './global.css'
 import './app.css'
@@ -8,6 +8,8 @@ import {BN} from 'bn.js'
 import ReactTooltip from 'react-tooltip';
 import ReactFileReader from 'react-file-reader';
 import {useDetectOutsideClick} from "./useDetectOutsideClick";
+import {PublicKey} from 'near-api-js/lib/utils'
+import {KeyType} from 'near-api-js/lib/utils/key_pair'
 
 import getConfig from './config'
 import getAppSettings from './app-settings'
@@ -74,16 +76,17 @@ export default function App() {
     const ParsedAccountsList = () => {
         let total = 0;
         let counter = 1;
-        return <ul className="accounts">
-            {Object.keys(accounts).map(function (account_id) {
-                total += Number(accounts[account_id]);
-                return <li key={account_id}>
-                    <div className="account" title={account_id}>{counter++}. {AccountTrim(account_id)}</div>
-                    <div className="amount">{accounts[account_id]} Ⓝ</div>
-                </li>
-            })}
-            <TotalValue total={total}/>
-        </ul>;
+        return Object.keys(accounts).length ?
+            <ul className="accounts">
+                {Object.keys(accounts).map(function (account_id) {
+                    total += Number(accounts[account_id]);
+                    return <li key={account_id}>
+                        <div className="account" title={account_id}>{counter++}. {AccountTrim(account_id)}</div>
+                        <div className="amount">{accounts[account_id]} Ⓝ</div>
+                    </li>
+                })}
+                <TotalValue total={total}/>
+            </ul> : null;
     };
 
     const Header = () => {
@@ -215,12 +218,17 @@ export default function App() {
         setButtonsVisibility(accounts, total, deposit, true);
     };
 
+    const ActionButtons = useRef(null)
+
+    const scrollToBottom = () => {
+        ActionButtons.current.scrollIntoView({behavior: "smooth"});
+    }
 
     const GetDeposit = async () => {
         const deposit = await window.contract.get_deposit({
             account_id: window.accountId
         });
-        const depositFormatted = nearAPI.utils.format.formatNearAmount(deposit, FRAC_DIGITS);
+        const depositFormatted = nearAPI.utils.format.formatNearAmount(deposit, FRAC_DIGITS).replace(",", "");
         setDeposit(depositFormatted);
         return depositFormatted;
     };
@@ -238,7 +246,7 @@ export default function App() {
                     if (accountsRaw && accountsRaw.length) {
                         let total = 0;
                         Object.keys(accountsRaw).map(function (index) {
-                            const amount = nearAPI.utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS);
+                            const amount = nearAPI.utils.format.formatNearAmount(accountsRaw[index].amount, FRAC_DIGITS).replace(",", "");
                             total += Number(amount);
                             accounts[accountsRaw[index].account_id] = amount;
                         });
@@ -327,6 +335,7 @@ export default function App() {
                                       id="accounts"
                                       defaultValue={getAccountsText(accounts)}
                                       onChange={e => parseAmounts(e.target.value)}
+                                      onPaste={e => parseAmounts(e.target.value)}
                                   />
                             {
                                 textareaPlaceHolderVisibility &&
@@ -339,12 +348,12 @@ export default function App() {
                         </div>
 
                         <div className="action-buttons">
-
                             <button
                                 disabled={checkButtonVisibility}
-                                className={`send-button ${checkButtonVisibility ? "hidden" : ""}`}
+                                className={`verify-button send-button ${checkButtonVisibility ? "hidden" : ""}`}
                                 onClick={async event => {
                                     event.preventDefault();
+                                    ReactTooltip.hide();
 
                                     // disable the form while the value gets updated on-chain
                                     fieldset.disabled = true
@@ -369,7 +378,7 @@ export default function App() {
                                         Object.values(validAccounts).map(account => {
                                             if (account) {
                                                 validAccountsFiltered[account] = accounts[account];
-                                                total += accounts[account];
+                                                total += parseFloat(accounts[account]);
                                             }
                                         });
                                         const removed = Object.keys(accounts).length - Object.keys(validAccountsFiltered).length;
@@ -390,6 +399,9 @@ export default function App() {
                                                 data: `All accounts are valid`
                                             });
 
+                                        if (total)
+                                            scrollToBottom();
+
                                         // remove Notification again after css animation completes
                                         // this allows it to be shown again next time the form is submitted
                                         setTimeout(() => {
@@ -400,14 +412,19 @@ export default function App() {
 
                                 }}
                                 data-tip={"Remove invalid accounts from the list"}>
-                                Check
+                                Verify accounts
                             </button>
+                        </div>
 
+                        <ParsedAccountsList/>
+
+                        <div className="action-buttons action-buttons-last" ref={ActionButtons}>
                             <button
                                 disabled={sendButtonDisabled}
                                 className={`send-button ${sendButtonDisabled ? "hidden" : ""}`}
                                 onClick={async event => {
                                     event.preventDefault()
+                                    ReactTooltip.hide();
 
                                     // disable the form while the value gets updated on-chain
                                     fieldset.disabled = true
@@ -429,7 +446,6 @@ export default function App() {
                                         const gas = 300000000000000;
                                         let chunksProcessedCount = 0;
                                         const mapLoop = async _ => {
-                                            console.log('Start')
                                             await chunks.map(async currentMultisenderAccounts => {
                                                 chunksProcessedCount += 1;
                                                 const accountsProcessedCount = chunkSize * chunksProcessedCount;
@@ -438,15 +454,26 @@ export default function App() {
                                                 setAccounts(remainingAccounts);
                                                 SaveAccountsToLocalStorage(remainingAccounts);
 
+                                                setShowNotification({method: "call", data: "multisend_from_balance"});
                                                 await window.contract.multisend_from_balance({
                                                     accounts: currentMultisenderAccounts
-                                                }, gas).then(() => GetDeposit());
+                                                }, gas).then(() => {
+                                                    GetDeposit();
 
-                                                setShowNotification({method: "call", data: "multisend_from_balance"});
+                                                    setShowNotification({
+                                                        method: "complete",
+                                                        data: "multisend_from_balance"
+                                                    });
+                                                    setTimeout(() => {
+                                                        setShowNotification("")
+                                                    }, 11000)
+                                                });
+
+
                                             });
-                                            console.log('End')
                                         };
                                         await mapLoop();
+                                        setButtonsVisibility([], 0, deposit, true);
                                     } catch (e) {
                                         alert(
                                             'Something went wrong! \n' +
@@ -458,15 +485,6 @@ export default function App() {
                                         // re-enable the form, whether the call succeeded or failed
                                         fieldset.disabled = false
                                     }
-
-                                    // show Notification
-                                    setShowNotification({method: "call", data: "multisend_from_balance"});
-
-                                    // remove Notification again after css animation completes
-                                    // this allows it to be shown again next time the form is submitted
-                                    setTimeout(() => {
-                                        setShowNotification("")
-                                    }, 11000)
                                 }}
                                 data-tip={"Multi send to all recipients using your internal balance of Multusender App. Your deposit: " + deposit + "Ⓝ"}>
                                 Send from App Balance
@@ -477,6 +495,7 @@ export default function App() {
                                 className={`deposit-send-button ${depositAndSendButtonVisibility ? "" : "hidden"}`}
                                 onClick={async event => {
                                     event.preventDefault()
+                                    ReactTooltip.hide();
 
                                     // disable the form while the value gets updated on-chain
                                     fieldset.disabled = true
@@ -524,6 +543,7 @@ export default function App() {
                                 className={`deposit-button ${depositButtonDisabled ? "hidden" : ""}`}
                                 onClick={async event => {
                                     event.preventDefault()
+                                    ReactTooltip.hide();
 
                                     // disable the form while the value gets updated on-chain
                                     fieldset.disabled = true;
@@ -537,7 +557,7 @@ export default function App() {
 
                                         SaveAccountsToLocalStorage(multisenderAccounts);
 
-                                        const gas = 10000000000000;
+                                        const gas = 30000000000000;
 
                                         await window.contract.deposit({}, gas, ConvertToYoctoNear(total - deposit));
 
@@ -567,8 +587,6 @@ export default function App() {
                             </button>
                         </div>
 
-                        <ParsedAccountsList/>
-
                     </fieldset>
                 </form>
             </main>
@@ -591,6 +609,11 @@ function getNearAccountConnection() {
 }
 
 async function accountExists(connection, accountId) {
+    if (accountId.length === 44) {
+        let key = new PublicKey({keyType: KeyType.ED25519, data: Buffer.from(accountId, 'hex')});
+        return !!(key.toString())
+    }
+
     try {
         await new nearAPI.Account(connection, accountId).state();
         return true;
@@ -614,6 +637,20 @@ function Notification(props) {
                 </a>
                 {' '/* React trims whitespace around tags; insert literal space character when needed */}
                 called method: '{props.data}' in contract:
+                {' '}
+                <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.contract.contractId}`}>
+                    {window.contract.contractId}
+                </a>
+                <footer>
+                    <div>✔ Succeeded</div>
+                    <div>Just now</div>
+                </footer>
+            </aside>
+        )
+    else if (props.method === "complete")
+        return (
+            <aside>
+                Request: '{props.data}' complete! Please check the contract:
                 {' '}
                 <a target="_blank" rel="noreferrer" href={`${urlPrefix}/${window.contract.contractId}`}>
                     {window.contract.contractId}
