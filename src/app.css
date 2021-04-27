@@ -36,6 +36,10 @@ textarea#accounts {
     padding-bottom: 0.3em;
 }
 
+li.processed div{
+    text-decoration: line-through;
+}
+
 .textarea-description .caption {
     flex: 1;
 }

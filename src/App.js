@@ -32,6 +32,8 @@ export default function App() {
     const [depositAndSendButtonVisibility, setDepositAndSendButtonVisibility] = React.useState(true);
     const [textareaPlaceHolderVisibility, setTextareaPlaceHolderVisibility] = React.useState(true);
 
+    const chunkSize = 7;
+
     const navDropdownRef = React.useRef(null);
     const [isNavDropdownActive, setIsNaVDropdownActive] = useDetectOutsideClick(navDropdownRef, false);
 
@@ -41,6 +43,8 @@ export default function App() {
     const [accounts, setAccounts] = React.useState({});
     const [deposit, setDeposit] = React.useState(0);
     const [total, setTotal] = React.useState(0);
+    const [chunkProcessingIndex, setChunkProcessingIndex] = React.useState(0);
+
 
     const setButtonsVisibility = (accounts, total, deposit, checkOtherButtons) => {
         if (checkOtherButtons === undefined)
@@ -80,7 +84,9 @@ export default function App() {
             <ul className="accounts">
                 {Object.keys(accounts).map(function (account_id) {
                     total += Number(accounts[account_id]);
-                    return <li key={account_id}>
+                    const chuckIndex = Math.floor((counter) / chunkSize);
+                    let liClassName = (chuckIndex < chunkProcessingIndex) ? "processed" : "";
+                    return <li key={account_id} className={liClassName} data-chunk-index={chuckIndex}>
                         <div className="account" title={account_id}>{counter++}. {AccountTrim(account_id)}</div>
                         <div className="amount">{accounts[account_id]} Ⓝ</div>
                     </li>
@@ -197,13 +203,13 @@ export default function App() {
     };
 
     let parseAmounts = function (input) {
-        const pattern = RegExp(/([\_\-0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.]+)/, 'g');
+        const pattern = RegExp(/([\_\-0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.\,]+)/, 'g');
         let accounts = {};
         let result;
         let total = 0;
         while ((result = pattern.exec(input)) !== null) {
-            if (result[1] && Number(result[2])) {
-                const amount = Number(result[2])
+            const amount = parseFloat(result[2].replace(',', '.').replace(' ', ''))
+            if (result[1] && amount) {
                 if (accounts.hasOwnProperty(result[1])) {
                     accounts[result[1]] += amount;
                 } else
@@ -437,43 +443,47 @@ export default function App() {
 
                                         SaveAccountsToLocalStorage(multisenderAccounts);
 
-                                        let chunks = [];
-                                        const chunkSize = 150;
-                                        let multisenderAccountsClone = [...multisenderAccounts];
-                                        while (multisenderAccountsClone.length > 0)
-                                            chunks.push(multisenderAccountsClone.splice(0, chunkSize));
-
                                         const gas = 300000000000000;
-                                        let chunksProcessedCount = 0;
-                                        const mapLoop = async _ => {
-                                            await chunks.map(async currentMultisenderAccounts => {
-                                                chunksProcessedCount += 1;
-                                                const accountsProcessedCount = chunkSize * chunksProcessedCount;
-                                                let multisenderAccountsClone = [...multisenderAccounts];
-                                                const remainingAccounts = multisenderAccountsClone.splice(accountsProcessedCount, multisenderAccountsClone.length - accountsProcessedCount);
-                                                setAccounts(remainingAccounts);
-                                                SaveAccountsToLocalStorage(remainingAccounts);
+                                        let promises = [];
 
-                                                setShowNotification({method: "call", data: "multisend_from_balance"});
-                                                await window.contract.multisend_from_balance({
-                                                    accounts: currentMultisenderAccounts
-                                                }, gas).then(() => {
-                                                    GetDeposit();
+                                        const chunks = multisenderAccounts.reduce(function (result, value, index, array) {
+                                            if (index % chunkSize === 0) {
+                                                const max_slice = Math.min(index + chunkSize, multisenderAccounts.length);
+                                                result.push(array.slice(index, max_slice));
+                                            }
+                                            return result;
+                                        }, []);
 
-                                                    setShowNotification({
-                                                        method: "complete",
-                                                        data: "multisend_from_balance"
+                                        const ret = await (chunks).reduce(
+                                            async (promise, chunk, index) => {
+                                                return promise.then(async last => {
+                                                    const ret = last + 100;
+                                                    //console.log(`${index}: waiting 1000 ms to return ${ret}`)
+
+                                                    const max_slice = Math.min((index + 1) * chunkSize, multisenderAccounts.length);
+                                                    const remainingAccounts = multisenderAccounts.slice(max_slice);
+
+                                                    SaveAccountsToLocalStorage(remainingAccounts);
+
+                                                    await new Promise(async (res, rej) => {
+                                                        await window.contract.multisend_from_balance({
+                                                            accounts: chunk
+                                                        }, gas).then(() => {
+                                                            setChunkProcessingIndex(index + 1);
+                                                        })
+
+                                                        return setTimeout(res, 100);
                                                     });
-                                                    setTimeout(() => {
-                                                        setShowNotification("")
-                                                    }, 11000)
-                                                });
-
-
+                                                    return ret;
+                                                })
+                                            }, Promise.resolve(0)).then(() => {
+                                            setButtonsVisibility([], 0, deposit, true);
+                                            setShowNotification({
+                                                method: "complete",
+                                                data: "multisend_from_balance"
                                             });
-                                        };
-                                        await mapLoop();
-                                        setButtonsVisibility([], 0, deposit, true);
+                                            GetDeposit();
+                                        });
                                     } catch (e) {
                                         alert(
                                             'Something went wrong! \n' +
