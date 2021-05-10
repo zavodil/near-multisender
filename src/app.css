@@ -79,3 +79,6 @@ ul.accounts div {
     vertical-align: top;
 }
 
+.action-buttons button {
+    margin-bottom: 10px;
+}

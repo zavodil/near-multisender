@@ -15,7 +15,7 @@
     "start": "export PORT=39106 && echo The app is starting! It will automatically open in your browser when ready && env-cmd -f ./neardev/dev-account.env parcel src/index.html --open",
     "dev": "export PORT=39106 && nodemon --watch contract/src -e rs --exec \"npm run start\"",
     "test": "npm run build:contract:debug && cd contract && cargo test -- --nocapture && cd .. && jest test --runInBand",
-    "build:web:testnet": "export NODE_ENV=testnet && rm -r testnet && parcel build src/index.html --public-url ./ && mv dist testnet",
+    "build:web:testnet": "export NODE_ENV=testnet && rm -rf testnet && parcel build src/index.html --public-url ./ && mv dist testnet",
     "build:contract:testnet": "export NODE_ENV=testnet && node contract/compile.js",
     "deploy:contract:testnet": "export NODE_ENV=testnet && near deploy",
     "build:web:all": "export NODE_ENV=mainnet && rm -r mainnet && parcel build src/index.html --public-url ./ && mv dist mainnet && export NODE_ENV=testnet && rm -r testnet && parcel build src/index.html --public-url ./ && mv dist testnet",

@@ -20,7 +20,7 @@ export async function initContract() {
         // View methods are read only. They don't modify the state, but usually return some value.
         viewMethods: ['get_deposit'],
         // Change methods can modify the state. But you don't receive the returned value when called.
-        changeMethods: ['deposit', 'multisend_from_balance', 'multisend_attached_tokens'],
+        changeMethods: ['deposit', 'multisend_from_balance', 'multisend_attached_tokens', 'multisend_from_balance_unsafe'],
     })
 }
 

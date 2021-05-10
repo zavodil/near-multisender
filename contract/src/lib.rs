@@ -151,6 +151,57 @@ impl Multisender {
         }
     }
 
+    pub fn multisend_from_balance_unsafe(&mut self, accounts: Vec<Operation>) {
+        let account_id = env::predecessor_account_id();
+
+        assert!(self.deposits.contains_key(&account_id), "Unknown user");
+
+        let tokens: Balance = *self.deposits.get(&account_id).unwrap();
+        let mut total: Balance = 0;
+        for account in &accounts {
+            assert!(
+                env::is_valid_account_id(account.account_id.as_bytes()),
+                "Account @{} is invalid",
+                account.account_id
+            );
+
+            let amount: Balance = account.amount.into();
+            total += amount;
+        }
+
+        assert!(
+            total <= tokens,
+            "Not enough deposited tokens to run multisender (Supplied: {}. Demand: {})",
+            tokens,
+            total
+        );
+
+        let mut logs: String = "".to_string();
+        let mut total_sent: Balance = 0;
+        let direct_logs:bool = accounts.len() < 100;
+
+        for account in accounts {
+            let amount_u128: u128 = account.amount.into();
+            total_sent += amount_u128;
+            let new_balance = tokens - total_sent;
+            self.deposits.insert(account_id.clone(), new_balance);
+
+            Promise::new(account.account_id.clone()).transfer(amount_u128);
+
+            if direct_logs {
+                env::log( format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
+            }
+            else{
+                let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
+                logs.push_str(&log);
+            }
+        }
+
+        if !direct_logs {
+            env::log(format!("Done!\n{}", logs).as_bytes());
+        }
+    }
+
     pub fn on_transfer_from_balance(&mut self, account_id: AccountId, amount_sent: Balance, recipient: AccountId) {
         assert_self();
 
@@ -235,66 +286,81 @@ pub fn yton(yocto_amount: Balance) -> Balance {
     (yocto_amount + (5 * 10u128.pow(23))) / 10u128.pow(24)
 }
 
-/*
- * The rest of this file holds the inline tests for the code above
- * Learn more about Rust tests: https://doc.rust-lang.org/book/ch11-01-writing-tests.html
- *
- * To run from contract directory:
- * cargo test -- --nocapture
- *
- * From project root, to run in combination with frontend tests:
- * yarn test
- *
- */
+
+
+
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use near_sdk::MockedBlockchain;
     use near_sdk::{testing_env, VMContext};
 
-    // mock the context for testing, notice "signer_account_id" that was accessed above from env::
-    fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
+    fn master_account() -> AccountId { "admin.near".to_string() }
+
+    fn alice_account() -> AccountId { "alice.near".to_string() }
+
+    fn bob_account() -> AccountId { "bob.near".to_string() }
+
+    pub fn get_context(
+        predecessor_account_id: AccountId,
+        attached_deposit: u128,
+        is_view: bool,
+    ) -> VMContext {
         VMContext {
-            current_account_id: "alice_near".to_string(),
-            signer_account_id: "bob_near".to_string(),
+            current_account_id: predecessor_account_id.clone(),
+            signer_account_id: predecessor_account_id.clone(),
             signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: "carol_near".to_string(),
-            input,
-            block_index: 0,
+            predecessor_account_id,
+            input: vec![],
+            block_index: 1,
             block_timestamp: 0,
+            epoch_height: 1,
             account_balance: 0,
             account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
+            storage_usage: 10u64.pow(6),
+            attached_deposit,
+            prepaid_gas: 10u64.pow(15),
             random_seed: vec![0, 1, 2],
             is_view,
             output_data_receivers: vec![],
-            epoch_height: 19,
         }
     }
 
+    fn ntoy(near_amount: Balance) -> Balance {
+        near_amount * 10u128.pow(24)
+    }
+
     #[test]
-    fn set_then_get_greeting() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+    fn test_deposit() {
+        let context = get_context(alice_account(), ntoy(100), false);
+        testing_env!(context.clone());
+
         let mut contract = Multisender::default();
-        contract.set_greeting("howdy".to_string());
+
+        contract.deposit();
+
         assert_eq!(
-            "howdy".to_string(),
-            contract.get_greeting("bob_near".to_string())
+            ntoy(100),
+            contract.get_deposit(alice_account()).0
         );
     }
 
     #[test]
-    fn get_default_greeting() {
-        let context = get_context(vec![], true);
-        testing_env!(context);
-        let contract = Multisender::default();
-// this test did not call set_greeting so should return the default "Hello" greeting
+    fn test_deposit_withdraw() {
+        let context = get_context(alice_account(), ntoy(100), false);
+        testing_env!(context.clone());
+
+        let mut contract = Multisender::default();
+
+        contract.deposit();
+        contract.withdraw();
+
         assert_eq!(
-            "Hello".to_string(),
-            contract.get_greeting("francis.near".to_string())
+            0,
+            contract.get_deposit(alice_account()).0
         );
     }
 }

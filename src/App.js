@@ -26,13 +26,14 @@ function ConvertToYoctoNear(amount) {
 export default function App() {
     // when the user has not yet interacted with the form, disable the button
     const [sendButtonDisabled, setSendButtonDisabled] = React.useState(true);
+    const [sendButtonUnsafeDisabled, setSendButtonUnsafeDisabled] = React.useState(true);
     const [checkButtonVisibility, setCheckButtonVisibility] = React.useState(false);
     const [depositButtonDisabled, setDepositButtonDisabled] = React.useState(true);
     const [depositAndSendButtonDisabled, setDepositAndSendButtonDisabled] = React.useState(true);
     const [depositAndSendButtonVisibility, setDepositAndSendButtonVisibility] = React.useState(true);
     const [textareaPlaceHolderVisibility, setTextareaPlaceHolderVisibility] = React.useState(true);
 
-    const chunkSize = 7;
+    const [chunkSize, setChunkSize] = React.useState(7); // or 100
 
     const navDropdownRef = React.useRef(null);
     const [isNavDropdownActive, setIsNaVDropdownActive] = useDetectOutsideClick(navDropdownRef, false);
@@ -54,10 +55,11 @@ export default function App() {
         const accountsLength = accounts ? Object.keys(accounts).length : 0;
         setDepositButtonDisabled(!signedIn || !accountsLength || /*accountsLength < 150 || */deposit >= total || !total);
         setSendButtonDisabled(!signedIn || !accountsLength || deposit < total);
+        setSendButtonUnsafeDisabled(!signedIn || !accountsLength || deposit < total);
         setCheckButtonVisibility(!signedIn || !accountsLength);
         const allButtonsDisabled = checkOtherButtons && depositButtonDisabled && sendButtonDisabled;
-        setDepositAndSendButtonDisabled(!signedIn || !accountsLength /*|| accountsLength > 150*/);
-        setDepositAndSendButtonVisibility(allButtonsDisabled || !depositAndSendButtonDisabled);
+        setDepositAndSendButtonDisabled(!signedIn || !accountsLength || accountsLength > chunkSize);
+        setDepositAndSendButtonVisibility(allButtonsDisabled || !(!signedIn || !accountsLength));
     };
 
     const getAccountsText = (accounts) => {
@@ -208,12 +210,13 @@ export default function App() {
         let result;
         let total = 0;
         while ((result = pattern.exec(input)) !== null) {
+            const account_name = result[1].toLowerCase();
             const amount = parseFloat(result[2].replace(',', '.').replace(' ', ''))
             if (result[1] && amount) {
-                if (accounts.hasOwnProperty(result[1])) {
-                    accounts[result[1]] += amount;
+                if (accounts.hasOwnProperty(account_name)) {
+                    accounts[account_name] += amount;
                 } else
-                    accounts[result[1]] = amount;
+                    accounts[account_name] = amount;
 
                 total += amount;
             }
@@ -432,6 +435,10 @@ export default function App() {
                                     event.preventDefault()
                                     ReactTooltip.hide();
 
+                                    let _chunkSize = 7;
+                                    setChunkSize(_chunkSize);
+                                    console.log("Chunk size: " + _chunkSize);
+
                                     // disable the form while the value gets updated on-chain
                                     fieldset.disabled = true
 
@@ -447,8 +454,8 @@ export default function App() {
                                         let promises = [];
 
                                         const chunks = multisenderAccounts.reduce(function (result, value, index, array) {
-                                            if (index % chunkSize === 0) {
-                                                const max_slice = Math.min(index + chunkSize, multisenderAccounts.length);
+                                            if (index % _chunkSize === 0) {
+                                                const max_slice = Math.min(index + _chunkSize, multisenderAccounts.length);
                                                 result.push(array.slice(index, max_slice));
                                             }
                                             return result;
@@ -458,9 +465,7 @@ export default function App() {
                                             async (promise, chunk, index) => {
                                                 return promise.then(async last => {
                                                     const ret = last + 100;
-                                                    //console.log(`${index}: waiting 1000 ms to return ${ret}`)
-
-                                                    const max_slice = Math.min((index + 1) * chunkSize, multisenderAccounts.length);
+                                                    const max_slice = Math.min((index + 1) * _chunkSize, multisenderAccounts.length);
                                                     const remainingAccounts = multisenderAccounts.slice(max_slice);
 
                                                     SaveAccountsToLocalStorage(remainingAccounts);
@@ -496,8 +501,85 @@ export default function App() {
                                         fieldset.disabled = false
                                     }
                                 }}
-                                data-tip={"Multi send to all recipients using your internal balance of Multusender App. Your deposit: " + deposit + "Ⓝ"}>
+                                data-tip={"Multi send to all recipients using your internal balance of Multusender App  by 7 txs. Your deposit: " + deposit + "Ⓝ"}>
                                 Send from App Balance
+                            </button>
+
+                            <button
+                                disabled={sendButtonUnsafeDisabled}
+                                className={`send-button ${sendButtonUnsafeDisabled ? "hidden" : ""}`}
+                                onClick={async event => {
+                                    event.preventDefault()
+                                    ReactTooltip.hide();
+
+                                    let _chunkSize = 100;
+                                    setChunkSize(_chunkSize);
+                                    console.log("Chunk size: " + _chunkSize);
+
+                                    // disable the form while the value gets updated on-chain
+                                    fieldset.disabled = true
+
+                                    try {
+                                        let multisenderAccounts = Object.keys(accounts).reduce(function (acc, cur) {
+                                            acc.push({account_id: cur, amount: ConvertToYoctoNear(accounts[cur])})
+                                            return acc;
+                                        }, []);
+
+                                        SaveAccountsToLocalStorage(multisenderAccounts);
+
+                                        const gas = 300000000000000;
+                                        let promises = [];
+
+                                        const chunks = multisenderAccounts.reduce(function (result, value, index, array) {
+                                            if (index % _chunkSize === 0) {
+                                                const max_slice = Math.min(index + _chunkSize, multisenderAccounts.length);
+                                                result.push(array.slice(index, max_slice));
+                                            }
+                                            return result;
+                                        }, []);
+
+                                        const ret = await (chunks).reduce(
+                                            async (promise, chunk, index) => {
+                                                return promise.then(async last => {
+                                                    const ret = last + 100;
+                                                    const max_slice = Math.min((index + 1) * _chunkSize, multisenderAccounts.length);
+                                                    const remainingAccounts = multisenderAccounts.slice(max_slice);
+
+                                                    SaveAccountsToLocalStorage(remainingAccounts);
+
+                                                    await new Promise(async (res, rej) => {
+                                                        await window.contract.multisend_from_balance_unsafe({
+                                                            accounts: chunk
+                                                        }, gas).then(() => {
+                                                            setChunkProcessingIndex(index + 1);
+                                                        })
+
+                                                        return setTimeout(res, 100);
+                                                    });
+                                                    return ret;
+                                                })
+                                            }, Promise.resolve(0)).then(() => {
+                                            setButtonsVisibility([], 0, deposit, true);
+                                            setShowNotification({
+                                                method: "complete",
+                                                data: "multisend_from_balance_unsafe"
+                                            });
+                                            GetDeposit();
+                                        });
+                                    } catch (e) {
+                                        alert(
+                                            'Something went wrong! \n' +
+                                            'Check your browser console for more info.\n' +
+                                            e.toString()
+                                        )
+                                        throw e
+                                    } finally {
+                                        // re-enable the form, whether the call succeeded or failed
+                                        fieldset.disabled = false
+                                    }
+                                }}
+                                data-tip={"Multi send to all recipients using your internal balance by 100 txs. BETTER GAS EFFICIENCY BY IGNORING TRANSFER STATUS. Always Verify Accounts before."}>
+                                Send Unsafe from App Balance
                             </button>
 
                             <button
@@ -544,9 +626,11 @@ export default function App() {
                                         setShowNotification("")
                                     }, 11000)
                                 }}
-                                data-tip="Deposit tokens to the Multisender App and immediately multi send to all recipients">
+                                data-tip={`Deposit tokens to the Multisender App and immediately multi send to all recipients. Max accounts allowed: ${chunkSize}`}
+                                >
                                 Deposit & Send
                             </button>
+
 
                             <button
                                 disabled={depositButtonDisabled}
