@@ -82,3 +82,7 @@ ul.accounts div {
 .action-buttons button {
     margin-bottom: 10px;
 }
+
+.warning-text{
+    display: block; color: var(--gray); font-size: 0.6em; margin-bottom: 0.5em;
+}

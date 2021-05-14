@@ -42,6 +42,7 @@ export default function App() {
     const [showNotification, setShowNotification] = React.useState("");
 
     const [accounts, setAccounts] = React.useState({});
+    const [accountsTextArea, setAccountsTextArea] = React.useState("");
     const [deposit, setDeposit] = React.useState(0);
     const [total, setTotal] = React.useState(0);
     const [chunkProcessingIndex, setChunkProcessingIndex] = React.useState(0);
@@ -205,7 +206,13 @@ export default function App() {
     };
 
     let parseAmounts = function (input) {
-        const pattern = RegExp(/([\_\-0-9a-zA-Z.]*)[\t,|\||=| ]?([0-9\.\,]+)/, 'g');
+        /*
+        first character: [0-9a-zA-Z]
+        account_id: [\_\-0-9a-zA-Z.]*
+        separator: [\t,|\||=| ]
+        amount ([0-9\.\,]+)
+        */
+        const pattern = RegExp(/^([0-9a-zA-Z][\_\-0-9a-zA-Z.]*)[\t,|\||=| ]([0-9\.\,]+$)/, 'gm');
         let accounts = {};
         let result;
         let total = 0;
@@ -224,6 +231,7 @@ export default function App() {
         setTextareaPlaceHolderVisibility(!input.length);
         setTotal(total);
         setAccounts(accounts);
+        setAccountsTextArea(input);
         setButtonsVisibility(accounts, total, deposit, true);
     };
 
@@ -261,6 +269,7 @@ export default function App() {
                         });
                         setTextareaPlaceHolderVisibility(false);
                         setAccounts(accounts);
+                        setAccountsTextArea(getAccountsText(accounts));
                         setTotal(total);
                         setButtonsVisibility(accounts, total, deposit, true);
                     }
@@ -342,9 +351,12 @@ export default function App() {
                                       autoFocus
                                       autoComplete="off"
                                       id="accounts"
-                                      defaultValue={getAccountsText(accounts)}
+                                      defaultValue={accountsTextArea}
                                       onChange={e => parseAmounts(e.target.value)}
-                                      onPaste={e => parseAmounts(e.target.value)}
+                                      onPaste={e => {
+                                          parseAmounts(e.clipboardData.getData('Text'));
+                                          e.preventDefault();
+                                      }}
                                   />
                             {
                                 textareaPlaceHolderVisibility &&
@@ -392,6 +404,7 @@ export default function App() {
                                         });
                                         const removed = Object.keys(accounts).length - Object.keys(validAccountsFiltered).length;
                                         setAccounts(validAccountsFiltered);
+                                        setAccountsTextArea(getAccountsText(validAccountsFiltered));
                                         setTotal(total);
                                         setButtonsVisibility(validAccountsFiltered, total, deposit, true);
 
@@ -426,6 +439,14 @@ export default function App() {
                         </div>
 
                         <ParsedAccountsList/>
+
+                        {!sendButtonDisabled && <>
+                            <div className="warning-text">Please double check account list and total amount before to
+                                send
+                                funds.
+                            </div>
+                            <div className="warning-text">Blockchain transactions are invertible.</div>
+                        </>}
 
                         <div className="action-buttons action-buttons-last" ref={ActionButtons}>
                             <button
@@ -627,7 +648,7 @@ export default function App() {
                                     }, 11000)
                                 }}
                                 data-tip={`Deposit tokens to the Multisender App and immediately multi send to all recipients. Max accounts allowed: ${chunkSize}`}
-                                >
+                            >
                                 Deposit & Send
                             </button>
 
