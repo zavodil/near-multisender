@@ -306,12 +306,21 @@ export default function App() {
         )
     }
 
+    const handlePaste = (event) => {
+        let { value, selectionStart, selectionEnd } = event.target;
+        let pastedValue = event.clipboardData.getData("text");
+        let pre = value.substring(0, selectionStart);
+        let post = value.substring(selectionEnd, value.length);
+        value = (pre + pastedValue + post).trim();
+        parseAmounts(value);
+    };
+
     return (
         // use React Fragment, <>, to avoid wrapping elements in unnecessary divs
         <>
             <Header/>
             <main>
-                <div className="background-img"></div>
+                <div className="background-img"/>
                 <h1>
                     Multisender Tool
                 </h1>
@@ -354,7 +363,7 @@ export default function App() {
                                       defaultValue={accountsTextArea}
                                       onChange={e => parseAmounts(e.target.value)}
                                       onPaste={e => {
-                                          parseAmounts(e.clipboardData.getData('Text'));
+                                          handlePaste(e);
                                           e.preventDefault();
                                       }}
                                   />
