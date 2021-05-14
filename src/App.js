@@ -205,7 +205,9 @@ export default function App() {
             return null
     };
 
-    let parseAmounts = function (input) {
+    let parseAmounts = function (input, pasteInProgress) {
+        if(pasteInProgress === undefined)
+            pasteInProgress = false;
         /*
         first character: [0-9a-zA-Z]
         account_id: [\_\-0-9a-zA-Z.]*
@@ -231,7 +233,9 @@ export default function App() {
         setTextareaPlaceHolderVisibility(!input.length);
         setTotal(total);
         setAccounts(accounts);
-        setAccountsTextArea(input);
+        if (!pasteInProgress) {
+            setAccountsTextArea(input);
+        }
         setButtonsVisibility(accounts, total, deposit, true);
     };
 
@@ -307,12 +311,12 @@ export default function App() {
     }
 
     const handlePaste = (event) => {
-        let { value, selectionStart, selectionEnd } = event.target;
+        let {value, selectionStart, selectionEnd} = event.target;
         let pastedValue = event.clipboardData.getData("text");
         let pre = value.substring(0, selectionStart);
         let post = value.substring(selectionEnd, value.length);
         value = (pre + pastedValue + post).trim();
-        parseAmounts(value);
+        parseAmounts(value, true);
     };
 
     return (
@@ -362,10 +366,7 @@ export default function App() {
                                       id="accounts"
                                       defaultValue={accountsTextArea}
                                       onChange={e => parseAmounts(e.target.value)}
-                                      onPaste={e => {
-                                          handlePaste(e);
-                                          e.preventDefault();
-                                      }}
+                                      onPaste={e => handlePaste(e)}
                                   />
                             {
                                 textareaPlaceHolderVisibility &&
