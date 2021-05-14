@@ -1,9 +1,3 @@
-загрузить в блокчейн
-export NODE_ENV=mainnet
-near deploy --accountId=multisender.app.near --wasmFile=/var/www/html/nearspace.info/apps/multisender/contract/target/wasm32-unknown-unknown/release/multisender.wasm
- 
-
-
 NEAR Multisender Tool
 ==================
 Multisender sends tokens to hundreds of addresses out in 1 single transaction.
