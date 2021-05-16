@@ -206,7 +206,7 @@ export default function App() {
     };
 
     let parseAmounts = function (input, pasteInProgress) {
-        if(pasteInProgress === undefined)
+        if (pasteInProgress === undefined)
             pasteInProgress = false;
         /*
         first character: [0-9a-zA-Z]
@@ -390,58 +390,75 @@ export default function App() {
                                     fieldset.disabled = true
 
                                     const connection = getNearAccountConnection();
+                                    const allAccountKeys = Object.keys(accounts);
+                                    let validAccountsFiltered = [];
+                                    let total = 0;
 
-                                    const mapLoop = async () => {
-                                        return Promise.all(Object.keys(accounts).map(async account => {
-                                                let valid = await accountExists(connection, account);
-                                                if (valid) {
-                                                    return account;
-                                                } else {
-                                                    console.log("Invalid account: " + account);
+                                    const groupSize = 500;
+                                    let groupIndex = -1;
+                                    let accountGroups = [];
+                                    for (let i = 0; i < allAccountKeys.length; i++) {
+                                        if (i % groupSize === 0) {
+                                            groupIndex++;
+                                            accountGroups[groupIndex] = [];
+                                        }
+
+                                        accountGroups[groupIndex].push(allAccountKeys[i])
+                                    }
+
+                                    let group = 0;
+                                    while (group < accountGroups.length) {
+                                        let checkAccountGroup = async () => {
+                                            return await Promise.all(accountGroups[group].map(async account => {
+                                                    let valid = await accountExists(connection, account).then();
+                                                    if (valid) {
+                                                        return account;
+                                                    } else {
+                                                        console.log("Invalid account: " + account);
+                                                    }
                                                 }
-                                            }
-                                        ));
-                                    };
+                                            ));
+                                        }
 
-                                    mapLoop().then((validAccounts) => {
-                                        let validAccountsFiltered = [];
-                                        let total = 0;
-                                        Object.values(validAccounts).map(account => {
-                                            if (account) {
-                                                validAccountsFiltered[account] = accounts[account];
-                                                total += parseFloat(accounts[account]);
-                                            }
+                                        await checkAccountGroup().then((validAccounts) => {
+                                            Object.values(validAccounts).map(account => {
+                                                if (account) {
+                                                    validAccountsFiltered[account] = accounts[account];
+                                                    total += parseFloat(accounts[account]);
+                                                }
+                                            });
                                         });
-                                        const removed = Object.keys(accounts).length - Object.keys(validAccountsFiltered).length;
-                                        setAccounts(validAccountsFiltered);
-                                        setAccountsTextArea(getAccountsText(validAccountsFiltered));
-                                        setTotal(total);
-                                        setButtonsVisibility(validAccountsFiltered, total, deposit, true);
 
-                                        fieldset.disabled = false
-                                        // show Notification
-                                        if (removed > 0)
-                                            setShowNotification({
-                                                method: "text",
-                                                data: `Removed ${removed} invalid account(s)`
-                                            });
-                                        else
-                                            setShowNotification({
-                                                method: "text",
-                                                data: `All accounts are valid`
-                                            });
+                                        group++;
+                                    }
 
-                                        if (total)
-                                            scrollToBottom();
+                                    const removed = Object.keys(accounts).length - Object.keys(validAccountsFiltered).length;
+                                    setAccounts(validAccountsFiltered);
+                                    setAccountsTextArea(getAccountsText(validAccountsFiltered));
+                                    setTotal(total);
+                                    setButtonsVisibility(validAccountsFiltered, total, deposit, true);
 
-                                        // remove Notification again after css animation completes
-                                        // this allows it to be shown again next time the form is submitted
-                                        setTimeout(() => {
-                                            setShowNotification("")
-                                        }, 11000)
-                                    });
+                                    fieldset.disabled = false
+                                    // show Notification
+                                    if (removed > 0)
+                                        setShowNotification({
+                                            method: "text",
+                                            data: `Removed ${removed} invalid account(s)`
+                                        });
+                                    else
+                                        setShowNotification({
+                                            method: "text",
+                                            data: `All accounts are valid`
+                                        });
 
+                                    if (total)
+                                        scrollToBottom();
 
+                                    // remove Notification again after css animation completes
+                                    // this allows it to be shown again next time the form is submitted
+                                    setTimeout(() => {
+                                        setShowNotification("")
+                                    }, 11000)
                                 }}
                                 data-tip={"Remove invalid accounts from the list"}>
                                 Verify accounts
