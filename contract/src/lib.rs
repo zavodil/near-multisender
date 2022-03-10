@@ -99,7 +99,7 @@ impl Multisender {
 
         assert!(self.deposits.contains_key(&account_id), "Unknown user");
 
-        let tokens: Balance = *self.deposits.get(&account_id).unwrap();
+        let mut tokens: Balance = *self.deposits.get(&account_id).unwrap();
         let mut total: Balance = 0;
         for account in &accounts {
             assert!(
@@ -131,6 +131,9 @@ impl Multisender {
                 let log = format!("Sending {} yNEAR (~{} NEAR) to account @{}\n", amount_u128, yton(amount_u128), account.account_id);
                 logs.push_str(&log);
             }
+
+            tokens = tokens - amount_u128;
+            self.deposits.insert(account_id.clone(), tokens);
 
             Promise::new(account.account_id.clone())
                 .transfer(amount_u128)
@@ -206,11 +209,10 @@ impl Multisender {
         assert_self();
 
         let transfer_succeeded = is_promise_success();
-        if transfer_succeeded {
-            let previous_balance: u128 = self.get_deposit(account_id.clone()).into();
-            self.deposits.insert(account_id, previous_balance - amount_sent);
-        } else {
+        if !transfer_succeeded {
             env::log(format!("Transaction to @{} failed. {} yNEAR (~{} NEAR) kept on the app deposit", recipient, amount_sent, yton(amount_sent)).as_bytes());
+            let previous_balance: u128 = self.get_deposit(account_id.clone()).into();
+            self.deposits.insert(account_id, previous_balance + amount_sent);
         }
     }
 
