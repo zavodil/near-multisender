@@ -1,6 +1,3 @@
-near deploy --accountId=multisender.app.near --wasmFile=/var/www/html/nearspace.info/apps/multisender/contract/target/wasm32-unknown-unknown/release/multisender.wasm
-
-
 NEAR Multisender Tool
 ==================
 Multisender sends tokens to hundreds of addresses out in 1 single transaction.
@@ -87,6 +84,10 @@ As you can see in `package.json`, this does two things:
 
 1. builds & deploys smart contract to NEAR TestNet
 2. builds & deploys frontend code to GitHub using [gh-pages]. This will only work if the project already has a repository set up on GitHub. Feel free to modify the `deploy` script in `package.json` to deploy elsewhere.
+
+```
+near deploy --accountId=multisender.app.near --wasmFile=out/main.wasm
+```
 
 
 Troubleshooting

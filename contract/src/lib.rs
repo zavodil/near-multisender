@@ -24,8 +24,8 @@ pub struct Multisender {
 
 #[ext_contract(ext_self)]
 pub trait ExtMultisender {
-    fn on_transfer_from_balance(&mut self, account_id: AccountId, amount_sent: Balance, recipient: AccountId);
-    fn on_transfer_attached_tokens(&mut self, account_id: AccountId, amount_sent: Balance, recipient: AccountId);
+    fn on_transfer_from_balance(&mut self, account_id: AccountId, amount_sent: U128, recipient: AccountId);
+    fn on_transfer_attached_tokens(&mut self, account_id: AccountId, amount_sent: U128, recipient: AccountId);
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ impl Multisender {
                 .then(
                     ext_self::on_transfer_attached_tokens(
                         account_id.clone(),
-                        amount_u128,
+                        account.amount,
                         account.account_id,
                         &env::current_account_id(),
                         0,
@@ -140,7 +140,7 @@ impl Multisender {
                 .then(
                     ext_self::on_transfer_from_balance(
                         account_id.clone(),
-                        amount_u128,
+                        account.amount,
                         account.account_id,
                         &env::current_account_id(),
                         0,
@@ -181,7 +181,7 @@ impl Multisender {
 
         let mut logs: String = "".to_string();
         let mut total_sent: Balance = 0;
-        let direct_logs:bool = accounts.len() < 100;
+        let direct_logs: bool = accounts.len() < 100;
 
         for account in accounts {
             let amount_u128: u128 = account.amount.into();
@@ -192,9 +192,8 @@ impl Multisender {
             Promise::new(account.account_id.clone()).transfer(amount_u128);
 
             if direct_logs {
-                env::log( format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
-            }
-            else{
+                env::log(format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
+            } else {
                 let log = format!("Sending {} yNEAR to account @{}\n", amount_u128, account.account_id);
                 logs.push_str(&log);
             }
@@ -205,25 +204,25 @@ impl Multisender {
         }
     }
 
-    pub fn on_transfer_from_balance(&mut self, account_id: AccountId, amount_sent: Balance, recipient: AccountId) {
+    pub fn on_transfer_from_balance(&mut self, account_id: AccountId, amount_sent: U128, recipient: AccountId) {
         assert_self();
 
         let transfer_succeeded = is_promise_success();
         if !transfer_succeeded {
-            env::log(format!("Transaction to @{} failed. {} yNEAR (~{} NEAR) kept on the app deposit", recipient, amount_sent, yton(amount_sent)).as_bytes());
+            env::log(format!("Transaction to @{} failed. {} yNEAR (~{} NEAR) kept on the app deposit", recipient, amount_sent.0, yton(amount_sent.0)).as_bytes());
             let previous_balance: u128 = self.get_deposit(account_id.clone()).into();
-            self.deposits.insert(account_id, previous_balance + amount_sent);
+            self.deposits.insert(account_id, previous_balance + amount_sent.0);
         }
     }
 
-    pub fn on_transfer_attached_tokens(&mut self, account_id: AccountId, amount_sent: Balance, recipient: AccountId) {
+    pub fn on_transfer_attached_tokens(&mut self, account_id: AccountId, amount_sent: U128, recipient: AccountId) {
         assert_self();
 
         let transfer_succeeded = is_promise_success();
         if !transfer_succeeded {
-            env::log(format!("Transaction to @{} failed. {} yNEAR (~{} NEAR) moved to the app deposit", recipient, amount_sent, yton(amount_sent)).as_bytes());
+            env::log(format!("Transaction to @{} failed. {} yNEAR (~{} NEAR) moved to the app deposit", recipient, amount_sent.0, yton(amount_sent.0)).as_bytes());
             let previous_balance: u128 = self.get_deposit(account_id.clone()).into();
-            self.deposits.insert(account_id, previous_balance + amount_sent);
+            self.deposits.insert(account_id, previous_balance + amount_sent.0);
         }
     }
 
@@ -287,11 +286,6 @@ fn is_promise_success() -> bool {
 pub fn yton(yocto_amount: Balance) -> Balance {
     (yocto_amount + (5 * 10u128.pow(23))) / 10u128.pow(24)
 }
-
-
-
-
-
 
 
 #[cfg(test)]
