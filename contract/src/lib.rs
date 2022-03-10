@@ -132,7 +132,7 @@ impl Multisender {
                 logs.push_str(&log);
             }
 
-            tokens = tokens - amount_u128;
+            tokens -= amount_u128;
             self.deposits.insert(account_id.clone(), tokens);
 
             Promise::new(account.account_id.clone())
@@ -180,16 +180,12 @@ impl Multisender {
         );
 
         let mut logs: String = "".to_string();
-        let mut total_sent: Balance = 0;
         let direct_logs: bool = accounts.len() < 100;
 
         for account in accounts {
             let amount_u128: u128 = account.amount.into();
-            total_sent += amount_u128;
-            let new_balance = tokens - total_sent;
-            self.deposits.insert(account_id.clone(), new_balance);
 
-            Promise::new(account.account_id.clone()).transfer(amount_u128);
+            Promise::new(account.account_id.clone()).transfer(account.amount.into());
 
             if direct_logs {
                 env::log(format!("Sending {} yNEAR to account @{}", amount_u128, account.account_id).as_bytes());
@@ -198,6 +194,8 @@ impl Multisender {
                 logs.push_str(&log);
             }
         }
+
+        self.deposits.insert(account_id, tokens - total);
 
         if !direct_logs {
             env::log(format!("Done!\n{}", logs).as_bytes());
