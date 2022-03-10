@@ -10,7 +10,7 @@ textarea#accounts {
     width: 100%;
     resize: vertical;
     background-color: transparent;
-    color: black;
+    color: var(--fg);
 }
 
 .accounts-placeholder {
@@ -47,6 +47,7 @@ li.processed div{
 .upload-csv-button {
     background-color: var(--gray);
     font-size: 0.5em;
+    line-height: 1.5em;
 }
 
 .react-file-reader-input {

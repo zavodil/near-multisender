@@ -199,7 +199,7 @@ export default function App() {
         if (props && props.total)
             return <li key="total" className="total">
                 <div className="account">Total</div>
-                <div className="amount">{props.total.toFixed(props.total >= 1 ? 2 : 5)} Ⓝ</div>
+                <div className="amount">{props.total.toFixed(6)} Ⓝ</div>
             </li>;
         else
             return null
